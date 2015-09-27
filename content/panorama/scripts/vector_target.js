@@ -1,7 +1,8 @@
 /*  
     AUTHOR: Adam Curtis, Copyright 2015
     CONTACT: kallisti.dev@gmail.com
-    WEBSITE: https://github.com/kallisti-dev/baregrills
+    WEBSITE: https://github.com/kallisti-dev/vector_target
+    LICENSE: https://github.com/kallisti-dev/vector_target/blob/master/LICENSE 
     
     Client-side handlers to accompany the server-side vector_target.lua library. Aside from including this script,
     no other client-side initialization is currently necessary.
