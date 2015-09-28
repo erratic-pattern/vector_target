@@ -1,5 +1,7 @@
 A library for vector targeted abilities in Dota 2 custom games.
 
+![vector target demo](http://giant.gfycat.com/DisgustingKindBronco.gif)
+
 #Features
 * Fullly configurable through KV
 * Support for custom client-side targeting particles (as well as a default particle that mimics the built-in range finder)
