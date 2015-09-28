@@ -131,25 +131,24 @@ Any ability that's been modified by the library will have a key named `isVectorT
 
 This library uses `SetExecuteOrderFilter`. If you have other code that needs to run during this filter, you'll need to
 set the `noOrderFilter` option when calling `VectorTarget:Init`, and then call `VectorTarget:OrderFilter` in your own custom order filter.
-    ```lua
-        VectorTarget:Init({ noOrderFilter = true })
-        
-        function MyExecuteOrderFilter(ctx, params)
-            if not VectorTarget:OrderFilter(params) then
-                return false
-            end
-            --insert your order filter logic here
+```lua
+    VectorTarget:Init({ noOrderFilter = true })
+    
+    function MyExecuteOrderFilter(ctx, params)
+        if not VectorTarget:OrderFilter(params) then
+            return false
         end
-        
-        GameRules:GetGameModEntity():SetExecuteOrderFilter(MyExecuteOrderFilter, {})
-    ``` 
+        --insert your order filter logic here
+    end
+    
+    GameRules:GetGameModEntity():SetExecuteOrderFilter(MyExecuteOrderFilter, {})
+``` 
 ( As an aside, I would be very interested in working with the modding community to create a standard system for
  overloading these filter functions in a composable manner. This would go a long way in making library mode
  more readily interoptable. )
  
 ##Adding Vector Targeting Behavior to Abilities Dynamically
-By default, the library will "vectorify" all abilities on NPCs during the `npc_spawned` event. If, however, you want to dynamically
-create abilities, you will need to make calls to `VectorTarget:WrapAbility`
+By default, the library will "vectorify" all abilities on NPCs during the `npc_spawned` event. If, however, you want to dynamically create abilities, you will need to make calls to `VectorTarget:WrapAbility`
 ```lua
 VectorTarget:WrapAbility(myAbility, {
   ParticleName = "particles/my_custom_particle.vpcf"
