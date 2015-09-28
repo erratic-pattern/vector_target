@@ -83,7 +83,8 @@ For fine-tuning of vector targeting options, you can pass a block with various o
             "PointOfCast"   "midpoint"  // Determines what point the caster must actually turn towards in order to 
                                         // begin the cast animation. By default this is set to "initial", which means
                                         // the caster turns towards the first point that was clicked.
-                                        // Setting it to "terminal" means the caster will face the second point that                                                 // was clicked. Here we use "midpoint", which means the point of cast will be
+                                        // Setting it to "terminal" means the caster will face the second point that
+                                        // was clicked. Here we use "midpoint", which means the point of cast will be
                                         // inbetween the initial and terminal points.
                                         
             "MaxDistance"   "1000" // Sets the max distance of the vector. Currently this isn't enforced and we don't
