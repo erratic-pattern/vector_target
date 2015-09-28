@@ -26,8 +26,7 @@ A library for vector targeted abilities in Dota 2 custom games.
     VectorTarget:Init()
     ```
 
-* If you plan on using the default range finder particles, you need to call `VectorTarget:Precache` in your `Precache`  
-  function, like this:
+* If you plan on using the default range finder particles, you need to call `VectorTarget:Precache` in your `Precache`  function, like this:
 
     ```lua
     --addon_game_mode.lua
@@ -158,7 +157,7 @@ VectorTarget:WrapAbility(myAbility, {
 ```
 The second argument is a table with values corresponding to the KV options described earlier.
  
-#Planned Improvements and to-do:
+#Planned Improvements and to-do
 * Support an optional fast click-drag-release casting behavior.
 * Support various combinations of unit-targeting and point-targeting, for example HoN's "Vector Entity" target type.
 * Add more built-in particles for area/cone abilities, and wide abilities.
@@ -169,7 +168,7 @@ The second argument is a table with values corresponding to the KV options descr
     *Add `ControlPoint` variables for range finders to properly show valid/invalid distances
     *Add level scaling format, i.e.  `"MaxDistance"  "500 600 700 800"`
   
-#Feedback, and Suggestions, Contributions:
+#Feedback, Suggestions, Contributions
 
 I am very interested in hearing your ideas for improving this library. Plese contact me at the email mentioned above
 if you have an idea or suggestion, and please submit a pull request to our github repo if you have a modification
