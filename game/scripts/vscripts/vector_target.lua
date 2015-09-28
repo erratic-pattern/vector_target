@@ -28,42 +28,47 @@
         
     KV usage:
     
-        This library uses a KV file to specify ability vector-targeting behavior. 
-        This KV file uses the same structure as npc_abilities_custom.txt, and by default this is the file we load KV data from.
-        However, if you'd like to load vector targeting information from another KV file, you can use the kv option when calling VectorTarget:Init
+        This library uses a KV file to specify ability vector-targeting behavior. The KV file uses the same structure as 
+        npc_abilities_custom.txt, and by default this is the file we load KV data from. However, if you'd like to load vector         targeting information from another KV file, you can use the kv option when calling VectorTarget:Init
             
             VectorTarget:Init({ kv = "my_custom_kv_file.txt" })
             
-        With that aside, we can talk about the KV file format. For default, vector targeting behavior, all you need to do is add a VectorTarget key to the ability's definition block.
+        You can also pass a table as the kv option, which will use that table as though it were the table returned by the 
+        LoadKeyValues API function.
+            
+        With that aside, we can talk about the KV file format. For default vector targeting behavior, all you need to do is 
+        add a VectorTarget key to the ability's definition block.
         
             "my_ability"
             {
                 "VectorTarget"      "1"
             }
             
-        For fine-tuning of vector targeting options, you instead pass a block with various option keys:
+        For fine-tuning of vector targeting options, you can pass a block with various option keys:
         
             "my_ability"
             {
                 "VectorTarget"
                 {
-                    "ParticleName"  "particles/my_custom_particle.vpcf"  //use a custom particle system (set to 0 for no particle)
+                    "ParticleName"  "particles/my_custom_particle.vpcf"  // Use a custom particle system 
+                                                                         // (set to 0 for no particle)
                     
-                    "ControlPoints"                                      //use custom control points for the particle
+                    "ControlPoints" // use custom control points for the particle
                     {
-                        "0": "initial"  // set CP0 to the vector's initial point (the first location clicked)
-                        "1": "terminal" // set CP1 to the vector's terminal point (the second location clicked)
+                        "0": "initial"  // Set CP0 to the vector's initial point (the first location clicked)
+                        "1": "terminal" // Set CP1 to the vector's terminal point (the second location clicked)
                     }
                     
-                    
-                    "PointOfCast"   "midpoint"  //Determines what point the caster must actually turn towards in order to begin the cast animation,
-                                                //By default this is set to "initial", which means the caster turns towards the first point that was clicked.
-                                                //Setting it to "terminal" means the caster will face the second point that was clicked.
-                                                //Here we use "midpoint", which means the point of cast will be inbetween the initial and terminal points.
-
-
-                    "MaxDistance"   "1000" // sets the max distance of the vector. Currently this isn't enforced and we don't do much with this parameter other than return it via GetMaxDistance,
+                    "PointOfCast"   "midpoint"  // Determines what point the caster must actually turn towards in order to 
+                                                // begin the cast animation. By default this is set to "initial", which means
+                                                // the caster turns towards the first point that was clicked.
+                                                // Setting it to "terminal" means the caster will face the second point that                                                 // was clicked. Here we use "midpoint", which means the point of cast will be
+                                                // inbetween the initial and terminal points.
+                                                
+                    "MaxDistance"   "1000" // Sets the max distance of the vector. Currently this isn't enforced and we don't
+                                           // do much with this parameter other than return it via GetMaxDistance,
                                            // but this will likely change in the future.
+                                           
                     "MinDistance"   "500"  // Minimum vector distance, also not fully supported yet.
                 }
             }
