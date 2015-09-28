@@ -36,7 +36,8 @@ A library for vector targeted abilities in Dota 2 custom games.
     ```
 
 * Finally, you need to include vector_target.js in the `<scripts>` of one of your panorama layouts. 
-  The layout you choose to load the library in is mostly irrelevant, as long as you load it only once at a time before abilities can be casted.
+  The layout you choose to load the library in is mostly irrelevant, as long as you load it before abilities
+  can be casted, and only load it once.
 
     ```xml  
     <scripts>
