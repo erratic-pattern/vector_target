@@ -36,7 +36,7 @@ end
 function VectorTarget:Init(opts)
     print("[VECTORTARGET] initializing")
     if not self.initializedPrecache then
-        print("[VECTORTARGET] warning: PrecacheVectorTargetLib was not called.")
+        print("[VECTORTARGET] warning: VectorTarget:Precache was not called before Init.")
     end
     opts = opts or { }
     if not opts.noEventListeners then
