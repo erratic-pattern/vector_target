@@ -1,5 +1,7 @@
 A library for vector targeted abilities in Dota 2 custom games.
 
+![](http://giant.gfycat.com/DisgustingKindBronco.gif)
+
 #Features
 * Fullly configurable through KV
 * Support for custom client-side targeting particles (as well as a default particle that mimics the built-in range finder)
@@ -24,8 +26,7 @@ A library for vector targeted abilities in Dota 2 custom games.
     VectorTarget:Init()
     ```
 
-* If you plan on using the default range finder particles, you need to call `VectorTarget:Precache` in your `Precache`  
-  function, like this:
+* If you plan on using the default range finder particles, you need to call `VectorTarget:Precache` in your `Precache`  function, like this:
 
     ```lua
     --addon_game_mode.lua
@@ -35,7 +36,8 @@ A library for vector targeted abilities in Dota 2 custom games.
     ```
 
 * Finally, you need to include vector_target.js in the `<scripts>` of one of your panorama layouts. 
-  The layout you choose to load the library in is mostly irrelevant, as long as you load it only once at a time before abilities can be casted.
+  The layout you choose to load the library in is mostly irrelevant, as long as you load it before abilities
+  can be casted, and only load it once.
 
     ```xml  
     <scripts>
@@ -83,7 +85,8 @@ For fine-tuning of vector targeting options, you can pass a block with various o
             "PointOfCast"   "midpoint"  // Determines what point the caster must actually turn towards in order to 
                                         // begin the cast animation. By default this is set to "initial", which means
                                         // the caster turns towards the first point that was clicked.
-                                        // Setting it to "terminal" means the caster will face the second point that                                                 // was clicked. Here we use "midpoint", which means the point of cast will be
+                                        // Setting it to "terminal" means the caster will face the second point that
+                                        // was clicked. Here we use "midpoint", which means the point of cast will be
                                         // inbetween the initial and terminal points.
                                         
             "MaxDistance"   "1000" // Sets the max distance of the vector. Currently this isn't enforced and we don't
@@ -129,25 +132,24 @@ Any ability that's been modified by the library will have a key named `isVectorT
 
 This library uses `SetExecuteOrderFilter`. If you have other code that needs to run during this filter, you'll need to
 set the `noOrderFilter` option when calling `VectorTarget:Init`, and then call `VectorTarget:OrderFilter` in your own custom order filter.
-    ```lua
-        VectorTarget:Init({ noOrderFilter = true })
-        
-        function MyExecuteOrderFilter(ctx, params)
-            if not VectorTarget:OrderFilter(params) then
-                return false
-            end
-            --insert your order filter logic here
+```lua
+    VectorTarget:Init({ noOrderFilter = true })
+    
+    function MyExecuteOrderFilter(ctx, params)
+        if not VectorTarget:OrderFilter(params) then
+            return false
         end
-        
-        GameRules:GetGameModEntity():SetExecuteOrderFilter(MyExecuteOrderFilter, {})
-    ``` 
+        --insert your order filter logic here
+    end
+    
+    GameRules:GetGameModEntity():SetExecuteOrderFilter(MyExecuteOrderFilter, {})
+``` 
 ( As an aside, I would be very interested in working with the modding community to create a standard system for
  overloading these filter functions in a composable manner. This would go a long way in making library mode
  more readily interoptable. )
  
 ##Adding Vector Targeting Behavior to Abilities Dynamically
-By default, the library will "vectorify" all abilities on NPCs during the `npc_spawned` event. If, however, you want to dynamically
-create abilities, you will need to make calls to `VectorTarget:WrapAbility`
+By default, the library will "vectorify" all abilities on NPCs during the `npc_spawned` event. If, however, you want to dynamically create abilities, you will need to make calls to `VectorTarget:WrapAbility`
 ```lua
 VectorTarget:WrapAbility(myAbility, {
   ParticleName = "particles/my_custom_particle.vpcf"
@@ -155,7 +157,7 @@ VectorTarget:WrapAbility(myAbility, {
 ```
 The second argument is a table with values corresponding to the KV options described earlier.
  
-#Planned Improvements and to-do:
+#Planned Improvements and to-do
 * Support an optional fast click-drag-release casting behavior.
 * Support various combinations of unit-targeting and point-targeting, for example HoN's "Vector Entity" target type.
 * Add more built-in particles for area/cone abilities, and wide abilities.
@@ -166,7 +168,7 @@ The second argument is a table with values corresponding to the KV options descr
     *Add `ControlPoint` variables for range finders to properly show valid/invalid distances
     *Add level scaling format, i.e.  `"MaxDistance"  "500 600 700 800"`
   
-#Feedback, and Suggestions, Contributions:
+#Feedback, Suggestions, Contributions
 
 I am very interested in hearing your ideas for improving this library. Plese contact me at the email mentioned above
 if you have an idea or suggestion, and please submit a pull request to our github repo if you have a modification
