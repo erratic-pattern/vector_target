@@ -23,7 +23,7 @@ elseif VectorTarget.initializedOrderFilter then
     VectorTarget:InitOrderFilter()
 end
 
-VectorTarget.VERSION = {0,1,2};
+VectorTarget.VERSION = {0,1,3};
 
 local queue = class({})
 
@@ -208,8 +208,13 @@ function VectorTarget:OrderFilter(data)
                 elseif data.queue == 0 then -- if not shift queued, clear cast queue before we add to it
                     self.castQueues:clearQueuesForUnits(units)
                 end
+                
                 inProgress.terminalPosition = targetPos
-                local p = VectorTarget._CalcPointOfCast(abil._vectorTargetKeys.pointOfCast, inProgress.initialPosition, inProgress.terminalPosition)
+                
+                --temporarily set initial/terminal on the ability so we can all (a possibly overriden) abil:GetPointOfCast
+                local p = VectorTarget._WithPoints(abil, inProgress.initialPosition, inProgress.terminalPosition, function() 
+                        return abil:GetPointOfCast()
+                end)
                 data.position_x = p.x
                 data.position_y = p.y
                 data.position_z = p.z
@@ -313,7 +318,7 @@ function VectorTarget:WrapAbility(abil, keys)
     
     if not abil.GetPointOfCast then
         function abil:GetPointOfCast()
-            return VectorTarget._CalcPointOfCast(abil._VectorTargetKeys.pointOfCast, abil:GetInitialPosition(), abil:GetTerminalPosition())
+            return VectorTarget._CalcPointOfCast(abil._vectorTargetKeys.pointOfCast, abil:GetInitialPosition(), abil:GetTerminalPosition())
         end
     end
     
@@ -363,6 +368,22 @@ end
 function VectorTarget._CalcMidPoint(a, b)
     return Vector((a.x + b.x)/2, (a.y + b.y)/2, (a.z + b.z)/2)
 end
+
+--helper to temporarily set targeting information
+function VectorTarget._WithPoints(abil, initial, terminal, func, ...)
+    local initialOld, terminalOld = abil:GetInitialPosition(), abil:GetTerminalPosition()
+    abil:SetInitialPosition(initial)
+    abil:SetTerminalPosition(terminal)
+    local status, res = pcall(func, ...)
+    abil:SetInitialPosition(initialOld)
+    abil:SetTerminalPosition(terminalOld)
+    if status then
+        return res
+    else
+        error(res)
+    end
+end
+
 -- a sparse queue implementation
 function queue.constructor(q)
     q.first = 0
