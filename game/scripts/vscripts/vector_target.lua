@@ -99,9 +99,10 @@ end
 function VectorTarget:LoadKV(kv)
     print("[VECTORTARGET] loading KV data")
     if type(kv) == "string" then
-        kv = LoadKeyValues(kv)
+        local kvFile = kv
+        kv = LoadKeyValues(kvFile)
         if kv == nil then
-            error("[VECTORTARGET] Error when loading KV from file: " .. kv)
+            error("[VECTORTARGET] Error when loading KV from file: " .. kvFile)
         end
     elseif type(kv) ~= "table" then
         error("[VECTORTARGET] LoadKV: expected table but got " .. type(kv) .. ": " .. tostring(kv))
