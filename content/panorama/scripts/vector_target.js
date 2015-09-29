@@ -9,17 +9,11 @@
     
 */
 'use strict';
-var VECTOR_TARGET_VERSION = [0, 1, 1];
+var VECTOR_TARGET_VERSION = [0, 1, 2];
 (function() {
     //constants
     var UPDATE_RANGE_FINDER_RATE = 1/30; // rate in seconds to update range finder control points
     var CANCEL_ORDER_DELAY = 0.01 // number of seconds to wait before the UI senda the cancel order event (prevents some race conditons between client/server handling)
-    var DEFAULT_PARTICLE = "particles/vector_target/vector_target_range_finder_line.vpcf"
-    var DEFAULT_CONTROL_POINTS = {
-        0 : "initial",
-        1 : "initial",
-        2 : "terminal"
-    }
     //state variables
     var rangeFinderParticle;
     var eventKeys = { };
@@ -33,10 +27,6 @@ var VECTOR_TARGET_VERSION = [0, 1, 1];
         eventKeys = keys;
         var p = keys.initialPosition;
         keys.initialPosition = [p.x, p.y, p.z];
-        //set defaults
-        keys.cpMap = keys.cpMap || DEFAULT_CONTROL_POINTS;
-        keys.particleName = keys.particleName || DEFAULT_PARTICLE;
-        
         Abilities.ExecuteAbility(keys.abilId, keys.unitId, false); //make ability our active ability so that a left-click will complete cast
         showRangeFinder();
     });
