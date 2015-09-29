@@ -5,8 +5,6 @@
     LICENSE: https://github.com/kallisti-dev/vector_target/blob/master/LICENSE 
 --]]
 
-VECTOR_TARGET_VERSION = 0.1;
-
 DEFAULT_VECTOR_TARGET_PARTICLE = "particles/vector_target/vector_target_range_finder_line.vpcf"
 
 reloaded = reloaded ~= nil
@@ -20,6 +18,8 @@ elseif VectorTarget.initializedOrderFilter then
     VectorTarget:InitOrderFilter()
 end
 
+VectorTarget.VERSION = {0,1,1};
+
 local queue = class({})
 
 -- call this in your Precache() function to precache vector targeting particles
@@ -28,7 +28,7 @@ function VectorTarget:Precache(context)
     print("[VECTORTARGET] precaching assets")
     --PrecacheResource("particle", "particles/vector_target_ring.vpcf", context)
     PrecacheResource("particle", "particles/vector_target/vector_target_range_finder_line.vpcf", context)
-    initializedPrecache = true
+    self.initializedPrecache = true
 end
 
 
@@ -72,15 +72,15 @@ function VectorTarget:InitEventListeners()
             self:WrapUnit(EntIndexToHScript(keys.entindex))
     end, {})
     CustomGameEventManager:RegisterListener("vector_target_order_cancel", function(eventSource, keys)
-        print("order cancel event")
+        --print("order cancel event")
         local inProgress = self.inProgressOrders[eventSource] 
         if inProgress ~= nil and inProgress.seqNum == keys.seqNum then
-            print("canceling")
+            --print("canceling")
             self.inProgressOrders[eventSource - 1] = nil
         end
     end)
     CustomGameEventManager:RegisterListener("vector_target_queue_full", function(eventSource, keys)
-        print("queue full")
+        --print("queue full")
         util.printTable(keys)
     end)
     self.initializedEventListeners = true
@@ -100,16 +100,23 @@ function VectorTarget:LoadKV(kv)
     print("[VECTORTARGET] loading KV data")
     if type(kv) == "string" then
         kv = LoadKeyValues(kv)
+        if kv == nil then
+            error("[VECTORTARGET] Error when loading KV from file: " .. kv)
+        end
     elseif type(kv) ~= "table" then
-        error("[VECTORTARGET] invalid input to LoadVectorTargetKV: " .. string(kv))
+        error("[VECTORTARGET] LoadKV: expected table but got " .. type(kv) .. ": " .. tostring(kv))
     end
     for name, keys in pairs(kv) do
-        keys = keys["VectorTarget"]
-        if keys and keys ~= "false" and keys ~= 0 then
-            if type(keys) ~= "table" then
-                keys = { }
+        if type(keys) == "table" then
+            keys = keys["VectorTarget"]
+            if keys and keys ~= "false" and keys ~= "0" and (type(keys) ~= "number" or keys ~= 0) then
+                if type(keys) ~= "table" then
+                    keys = { }
+                end
+                self.abilityKeys[name] = keys
             end
-            self.abilityKeys[name] = keys
+        else
+            print("[VECTORTARGET] Warning: Expected a table for ability definition " .. name .. " but got " .. type(keys) .. " instead.")
         end
     end        
 end
@@ -173,7 +180,7 @@ function VectorTarget:OrderFilter(data)
             local unitId = units["0"] or units[0]
             local targetPos = {x = data.position_x, y = data.position_y, z = data.position_z}
             if inProgress == nil or inProgress.abilId ~= abilId or inProgress.unitId ~= unitId then -- if no in-progress order, this order selects the initial point of a vector cast
-                print("inProgress", playerId, abilId, unitId)
+                --print("inProgress", playerId, abilId, unitId)
                 local orderData = {
                     abilId = abilId,
                     orderType = data.order_type,
@@ -230,7 +237,7 @@ function VectorTarget:WrapAbility(abil, keys)
     local VectorTarget = self
     local abiName = abil:GetAbilityName()
     if "ability_lua" ~= abil:GetClassname() then
-        print("[VECTORTARGET] warning: " .. abiName .. " is not a Lua ability and cannot be vector targeted.")
+        print("[VECTORTARGET] Warning: " .. abiName .. " is not a Lua ability and cannot be vector targeted.")
         return
     end
     if abil.isVectorTarget then

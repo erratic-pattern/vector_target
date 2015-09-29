@@ -9,7 +9,7 @@
     
 */
 'use strict';
-var VECTOR_TARGET_VERSION = 0.1;
+var VECTOR_TARGET_VERSION = [0, 1, 1];
 (function() {
     //constants
     var UPDATE_RANGE_FINDER_RATE = 1/30; // rate in seconds to update range finder control points
@@ -27,8 +27,8 @@ var VECTOR_TARGET_VERSION = 0.1;
     var updatingRangeFinder = false;
     
     GameEvents.Subscribe("vector_target_order_start", function(keys) {
-        $.Msg("vector_target_order_start event");
-        $.Msg(keys);
+        //$.Msg("vector_target_order_start event");
+        //$.Msg(keys);
         //initialize local state
         eventKeys = keys;
         var p = keys.initialPosition;
@@ -82,7 +82,7 @@ var VECTOR_TARGET_VERSION = 0.1;
     
     function cancelVectorTargetOrder() {
         if(eventKeys.abilId === undefined) return;
-        $.Msg("Canceling ", eventKeys)
+        //$.Msg("Canceling ", eventKeys)
         GameEvents.SendCustomGameEventToServer("vector_target_order_cancel", eventKeys);
         finalize();
     }
@@ -127,14 +127,14 @@ var VECTOR_TARGET_VERSION = 0.1;
     }
     
     GameEvents.Subscribe("vector_target_order_cancel", function(keys) {
-        $.Msg("canceling");
+        //$.Msg("canceling");
         if(keys.seqNum === eventKeys.seqNum && keys.abilId === eventKeys.abilId && keys.unitId === eventKeys.unitId) {
             finalize();
         }
     });
     
     GameEvents.Subscribe("vector_target_order_finish", function(keys) {
-        $.Msg("finished")
+        //$.Msg("finished")
         if(keys.seqNum === eventKeys.seqNum && keys.abilId === eventKeys.abilId && keys.unitId === eventKeys.unitId) {
             finalize();
         }
@@ -142,7 +142,7 @@ var VECTOR_TARGET_VERSION = 0.1;
 
     GameEvents.Subscribe("dota_update_selected_unit", function(keys) {
         var selection = Players.GetSelectedEntities(Game.GetLocalPlayerID());
-        $.Msg("update selected unit")
+        //$.Msg("update selected unit")
         if(selection[0] !== eventKeys.unitId) {
             cancelVectorTargetOrder();
         }
@@ -153,6 +153,6 @@ var VECTOR_TARGET_VERSION = 0.1;
             GameEvents.SendCustomGameEventToServer("vector_target_queue_full", prevEventKeys);
         }
     });
-})()
+})();
 
 $.Msg("vector_target.js loaded");
