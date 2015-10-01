@@ -12,7 +12,6 @@ DEFAULT_VECTOR_TARGET_CONTROL_POINTS = {
     [2] = "terminal"
 }
 
-reloaded = reloaded ~= nil
 if VectorTarget == nil then
     VectorTarget = {
         inProgressOrders = { }, -- a table of vector orders currently in-progress, indexed by player ID
