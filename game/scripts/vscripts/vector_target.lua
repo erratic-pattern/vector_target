@@ -210,7 +210,7 @@ function VectorTarget:OrderFilter(data)
                 
                 inProgress.terminalPosition = targetPos
                 
-                --temporarily set initial/terminal on the ability so we can call (a possibly overriden) abil:GetPointOfCast
+                --temporarily set initial/terminal on the ability so we can all (a possibly overriden) abil:GetPointOfCast
                 local p = VectorTarget._WithPoints(abil, inProgress.initialPosition, inProgress.terminalPosition, function() 
                         return abil:GetPointOfCast()
                 end)
