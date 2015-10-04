@@ -9,7 +9,21 @@
     
 */
 'use strict';
-var VECTOR_TARGET_VERSION = [0, 1, 3];
+var VECTOR_TARGET_VERSION = [0, 1, 4]; //version data
+
+var VectorTarget = {} // public API
+
+VectorTarget.SetFastClickDragMode = function(flag) {
+    /* Enables fast click-drag mode, where releasing the mouse button will complete the cast. */
+    VectorTarget.fastClickDragMode = flag;
+};
+
+VectorTarget.IsFastClickDragMode = function() {
+    /* Checks whether or not we're in fast click-drag mode */
+    return VectorTarget.fastClickDragMode;
+};
+
+
 (function() {
     //constants
     var UPDATE_RANGE_FINDER_RATE = 1/30; // rate in seconds to update range finder control points
@@ -143,6 +157,16 @@ var VECTOR_TARGET_VERSION = [0, 1, 3];
             GameEvents.SendCustomGameEventToServer("vector_target_queue_full", prevEventKeys);
         }
     });
+    
+    //fast click-drag handling
+    GameUI.SetMouseCallback(function(eventName, button) {
+        if (eventKeys.abilId && VectorTarget.IsFastClickDragMode() && eventName == "released" && button == 0) {
+            Abilities.ExecuteAbility(eventKeys.abilId, eventKeys.unitId, true);
+        }
+    });
+    
+    VectorTarget.SetFastClickDragMode(true);
+    
 })();
 
 $.Msg("vector_target.js loaded");

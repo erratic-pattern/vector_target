@@ -22,7 +22,7 @@ elseif VectorTarget.initializedOrderFilter then
     VectorTarget:InitOrderFilter()
 end
 
-VectorTarget.VERSION = {0,1,3};
+VectorTarget.VERSION = {0,1,4};
 
 local queue = class({})
 
