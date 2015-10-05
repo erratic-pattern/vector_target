@@ -12,19 +12,26 @@ DEFAULT_VECTOR_TARGET_CONTROL_POINTS = {
     [2] = "terminal"
 }
 
+--[[
+VECTOR_TARGET_DEBUG_NONE = 0     -- no logging
+VECTOR_TARGET_DEBUG_DEFAULT = 1  -- default logging of important events
+VECTOR_TARGET_DEBUG_ALL = 2      -- detailed debug info
+]]
 if VectorTarget == nil then
     VectorTarget = {
         inProgressOrders = { }, -- a table of vector orders currently in-progress, indexed by player ID
         abilityKeys = { }, -- data loaded from KV files, indexed by ability name
+        kvSources = { }, -- a list of filenames / tables that were passed to LoadKV, used during reloading
         castQueues = { }, -- table of cast queues indexed by castQueues[unit ID][ability ID]
+        --debugMode = VECTOR_TARGET_DEBUG_ALL, -- debug output mode
     }
-elseif VectorTarget.initializedOrderFilter then
-    VectorTarget:InitOrderFilter()
+else
+    VectorTarget:_OnScriptReload()
 end
 
-VectorTarget.VERSION = {0,1,4};
+VectorTarget.VERSION = {0,1,5};
 
-local queue = class({})
+local queue = class({}) -- sparse queue implementation (see bottom of file for code) 
 
 -- call this in your Precache() function to precache vector targeting particles
 function VectorTarget:Precache(context)
@@ -52,6 +59,143 @@ function VectorTarget:Init(opts)
     if opts.kv ~= false then
         self:LoadKV(opts.kv or "scripts/npc/npc_abilities_custom.txt")
     end
+    self.debugMode = opts.debug or self.debugMode
+end
+
+-- call this in your init function to start listening to events
+function VectorTarget:InitEventListeners()
+    if self.initializedEventListeners then return end
+    print("[VECTORTARGET] registering event listeners")
+    -- Note: wrapping the calls in an anonymous function allows reloading to work properly
+    ListenToGameEvent("npc_spawned", function(...) self:_OnNpcSpawned(...) end, {})
+    CustomGameEventManager:RegisterListener("vector_target_order_cancel", function(...) self:_OnVectorTargetOrderCancel(...) end)
+    CustomGameEventManager:RegisterListener("vector_target_queue_full", function(...) self:_OnVectorTargetQueueFull(...) end)
+    self.initializedEventListeners = true
+end
+
+-- call this in your init code to initialize the library's SetExecuteOrderFilter
+function VectorTarget:InitOrderFilter()
+    print("[VECTORTARGET] registering ExecuteOrderFilter (use noOrderFilter option to prevent this)")
+    local mode = GameRules:GetGameModeEntity()
+    mode:ClearExecuteOrderFilter()
+    mode:SetExecuteOrderFilter(function(_, data) return self:OrderFilter(data) end, {}) -- Note: wrapping the call in an anonymous function allows reloading to work properly
+    self.initializedOrderFilter = true
+end
+
+-- Loads vector target KV values from a file, or a table with the same format as one returned by LoadKeyValues()
+function VectorTarget:LoadKV(kv, forgetSource)
+    local kvFile
+    if type(kv) == "string" then
+        kvFile = kv
+        kv = LoadKeyValues(kvFile)
+        if kv == nil then
+            error("[VECTORTARGET] Error when loading KV from file: " .. kvFile)
+        end
+    elseif type(kv) ~= "table" then
+        error("[VECTORTARGET] LoadKV: expected table but got " .. type(kv) .. ": " .. tostring(kv))
+    end
+    print("[VECTORTARGET] Loading KV data from: " .. (kvFile or kv))
+    for name, keys in pairs(kv) do
+        if type(keys) == "table" then
+            keys = keys["VectorTarget"]
+            if keys and keys ~= "false" and keys ~= "0" and (type(keys) ~= "number" or keys ~= 0) then
+                if type(keys) ~= "table" then
+                    keys = { }
+                end
+                self.abilityKeys[name] = keys
+            end
+        else
+            print("[VECTORTARGET] Warning: Expected a table for ability definition " .. name .. " but got " .. type(keys) .. " instead.")
+        end
+    end
+    if not forgetSource then
+        table.insert(self.kvSources, kvFile or kv)
+    end
+end
+
+function VectorTarget:ReloadAllKV(deletePrevious)
+    --[[ Reloads KV from files/tables passed via VectorTarget:LoadKV
+
+        If the first argument is false, prevents deletion of previous KV data before reloading
+    ]]
+    if deletePrevious ~= false then
+        self.abilityKeys = { }
+    end
+    for _, source in ipairs(self.kvSources) do
+        self:LoadKV(source, true)
+    end
+end
+
+function VectorTarget:GetInProgressForPlayer(playerId)
+    --[[ Retrieves the current in-progress order, if any, for the given player.
+    ]]
+    return self.inProgressOrders[playerId]
+end
+
+function VectorTarget:GetInProgressForUnit(unitId)
+    --[[ Gets in-progress orders for current unit.
+        
+        Since multiple players could have in-progress orders on the same unit, this method returns an array of orders indexed by issuer's player ID
+    ]]
+    local out = { }
+    for playerId, order in ipairs(self.inProgressOrders) do
+        if order.unitId == unitId then
+            out[playerId] = order
+        end
+    end
+    return out
+end
+
+function VectorTarget:GetInProgressForAbility(abilId)
+    --[[ Gets in-progress orders for current ability.
+        
+        Since multiple players could have in-progress orders on the same unit, this method returns an array of orders indexed by issuer's player ID.
+    ]]
+    local out = { }
+    for playerId, order in ipairs(self.inProgressOrders) do
+        if order.abilId == abilId then
+            out[playerId] = order
+        end
+    end
+    return out
+end
+
+-- get the cast queue for a given (unit, ability) pair
+function VectorTarget:GetCastQueue(unitId, abilId)
+    local queues = self.castQueues
+    local unitTable = queues[unitId]
+    if not unitTable then
+        unitTable = { }
+        queues[unitId] = unitTable
+    end
+    local q = unitTable[abilId]
+    if not q then
+        q = queue()
+        unitTable[abilId] = q
+    end
+    return q
+end
+
+-- given an array of unit ids, clear all cast queues associated with those units
+function VectorTarget:ClearQueuesForUnits(units)
+    for _, unitId in pairs(units) do
+        for _, q in pairs(self.castQueues[unitId] or { }) do
+            if q then
+                q:clear()
+            end
+        end
+    end
+end
+
+-- get the largest sequence number for vector target orders issued on this unit
+function VectorTarget:GetMaxSequenceNumber(unitId)
+    local out = -1
+    for _, q in pairs(self.castQueues[unitId] or { }) do
+        if q and q.last > out then
+            out = q.last
+        end
+    end
+    return out
 end
 
 -- call this on a unit to add vector target functionality to its abilities
@@ -67,190 +211,15 @@ function VectorTarget:WrapUnit(unit)
     end
 end
 
-
--- call this in your init function to start listening to events
-function VectorTarget:InitEventListeners()
-    if self.initializedEventListeners then return end
-    print("[VECTORTARGET] registering event listeners")
-    ListenToGameEvent("npc_spawned", function(ctx, keys)
-            self:WrapUnit(EntIndexToHScript(keys.entindex))
-    end, {})
-    CustomGameEventManager:RegisterListener("vector_target_order_cancel", function(eventSource, keys)
-        --print("order cancel event")
-        local inProgress = self.inProgressOrders[eventSource] 
-        if inProgress ~= nil and inProgress.seqNum == keys.seqNum then
-            --print("canceling")
-            self.inProgressOrders[eventSource - 1] = nil
-        end
-    end)
-    CustomGameEventManager:RegisterListener("vector_target_queue_full", function(eventSource, keys)
-        --print("queue full")
-        --util.printTable(keys)
-    end)
-    self.initializedEventListeners = true
-end
-
--- call this in your init code to initialize the library's SetExecuteOrderFilter
-function VectorTarget:InitOrderFilter()
-    print("[VECTORTARGET] registering ExecuteOrderFilter (use noOrderFilter option to prevent this)")
-    local mode = GameRules:GetGameModeEntity()
-    mode:ClearExecuteOrderFilter()
-    mode:SetExecuteOrderFilter(function(_, data) return self:OrderFilter(data) end, {})
-    self.initializedOrderFilter = true
-end
-
--- Loads vector target KV values from a file, or a table with the same format as one returned by LoadKeyValues()
-function VectorTarget:LoadKV(kv)
-    print("[VECTORTARGET] loading KV data")
-    if type(kv) == "string" then
-        local kvFile = kv
-        kv = LoadKeyValues(kvFile)
-        if kv == nil then
-            error("[VECTORTARGET] Error when loading KV from file: " .. kvFile)
-        end
-    elseif type(kv) ~= "table" then
-        error("[VECTORTARGET] LoadKV: expected table but got " .. type(kv) .. ": " .. tostring(kv))
-    end
-    for name, keys in pairs(kv) do
-        if type(keys) == "table" then
-            keys = keys["VectorTarget"]
-            if keys and keys ~= "false" and keys ~= "0" and (type(keys) ~= "number" or keys ~= 0) then
-                if type(keys) ~= "table" then
-                    keys = { }
-                end
-                self.abilityKeys[name] = keys
-            end
-        else
-            print("[VECTORTARGET] Warning: Expected a table for ability definition " .. name .. " but got " .. type(keys) .. " instead.")
-        end
-    end        
-end
-
--- get the cast queue for a given (unit, ability) pair
-function VectorTarget.castQueues:get(unitId, abilId)
-    local unitTable = self[unitId]
-    if not unitTable then
-        unitTable = { }
-        self[unitId] = unitTable
-    end
-    local q = unitTable[abilId]
-    if not q then
-        q = queue()
-        unitTable[abilId] = q
-    end
-    return q
-end
-
--- given an array of unit ids, clear all cast queues associated with those units.
-function VectorTarget.castQueues:clearQueuesForUnits(units)
-    for _, unitId in pairs(units) do
-        for _, q in pairs(self[unitId] or { }) do
-            if q then
-                q:clear()
-            end
-        end
-    end
-end
-
-function VectorTarget.castQueues:getMaxSequenceNumber(unitId)
-    local out = -1
-    for _, q in pairs(self[unitId] or { }) do
-        if q and q.last > out then
-            out = q.last
-        end
-    end
-    return out
-end
-
-function VectorTarget:OrderFilter(data)
-    local playerId = data.issuer_player_id_const
-    local abilId = data.entindex_ability
-    local inProgress = self.inProgressOrders[playerId] -- retrieve any in-progress orders for this player
-    local seqNum = data.sequence_number_const
-    local units = { }
-    local nUnits = 0
-    for i, unitId in pairs(data.units) do
-        if seqNum > self.castQueues:getMaxSequenceNumber(unitId) then
-            units[i] = unitId
-            nUnits = nUnits + 1
-        end
-    end
-    if nUnits == 0 then
-        return true
-    end
-    --print("seq num: ", seqNum, "order type: ", data.order_type, "queue: ", data.queue)
-    if abilId ~= nil and abilId > 0 then
-        local abil = EntIndexToHScript(abilId)
-        if abil.isVectorTarget and data.order_type == DOTA_UNIT_ORDER_CAST_POSITION then
-            local unitId = units["0"] or units[0]
-            local targetPos = {x = data.position_x, y = data.position_y, z = data.position_z}
-            if inProgress == nil or inProgress.abilId ~= abilId or inProgress.unitId ~= unitId then -- if no in-progress order, this order selects the initial point of a vector cast
-                --print("inProgress", playerId, abilId, unitId)
-                local orderData = {
-                    abilId = abilId,
-                    orderType = data.order_type,
-                    unitId = unitId,
-                    initialPosition = targetPos,
-                    shiftPressed = data.queue,
-                    minDistance = abil:GetMinDistance(),
-                    maxDistance = abil:GetMaxDistance(),
-                    particleName = abil._vectorTargetKeys.particleName,
-                    cpMap = abil._vectorTargetKeys.cpMap,
-                    seqNum = seqNum,
-                }
-                self.inProgressOrders[playerId] = orderData --set this order as our player's current in-progress order
-                CustomGameEventManager:Send_ServerToPlayer(PlayerResource:GetPlayer(playerId), "vector_target_order_start", orderData)
-                return false
-            else --in-progress order (initial point has been selected)
-                if inProgress.shiftPressed == 1 then --make this order shift-queued if previous order was
-                    data.queue = 1
-                elseif data.queue == 0 then -- if not shift queued, clear cast queue before we add to it
-                    self.castQueues:clearQueuesForUnits(units)
-                end
-                
-                inProgress.terminalPosition = targetPos
-                
-                --temporarily set initial/terminal on the ability so we can all (a possibly overriden) abil:GetPointOfCast
-                local p = VectorTarget._WithPoints(abil, inProgress.initialPosition, inProgress.terminalPosition, function() 
-                        return abil:GetPointOfCast()
-                end)
-                data.position_x = p.x
-                data.position_y = p.y
-                data.position_z = p.z
-                self.castQueues:get(unitId, abilId):push(inProgress, seqNum)
-                self.inProgressOrders[playerId] = nil
-                -- something in the inProgress table causes the event system to crash the game, so we need to make a new table and pick out
-                -- only the important values.
-                CustomGameEventManager:Send_ServerToPlayer(PlayerResource:GetPlayer(playerId), "vector_target_order_finish", {
-                    --terminalPosition = inProgress.initialPosition,
-                    --initialPosition = inProgress.terminalPosition,
-                    unitId = inProgress.unitId,
-                    abilId = inProgress.abilId,
-                    seqNum = inProgress.seqNum,
-                })
-                return true -- exit early
-            end
-        end
-    end
-    if data.queue == 0 then -- if shift was not pressed, clear our cast queues for the unit(s) in question
-        self.castQueues:clearQueuesForUnits(units)
-    end
-    if inProgress ~= nil then
-        self.inProgressOrders[playerId] = nil
-        CustomGameEventManager:Send_ServerToPlayer(PlayerResource:GetPlayer(playerId), "vector_target_order_cancel", inProgress)
-    end
-    return true
-end
-
 --wrapper applied to all vector targeted abilities during initialization
-function VectorTarget:WrapAbility(abil, keys)
+function VectorTarget:WrapAbility(abil, keys, reloading)
     local VectorTarget = self
     local abiName = abil:GetAbilityName()
     if "ability_lua" ~= abil:GetClassname() then
         print("[VECTORTARGET] Warning: " .. abiName .. " is not a Lua ability and cannot be vector targeted.")
         return
     end
-    if abil.isVectorTarget then
+    if not reloading and abil.isVectorTarget then
         return
     end
     
@@ -340,17 +309,151 @@ function VectorTarget:WrapAbility(abil, keys)
         return bit.bor(b, DOTA_ABILITY_BEHAVIOR_POINT)
     end
     
+    --override OnAbilityPhaseStart
     local _OnAbilityPhaseStart = abil.OnAbilityPhaseStart
     function abil:OnAbilityPhaseStart()
-        local abilId = self:GetEntityIndex()
-        local unitId = self:GetCaster():GetEntityIndex()
-        --pop unit queue
-        local data = VectorTarget.castQueues:get(unitId, abilId):popFirst()
-        self:SetInitialPosition(data.initialPosition)
-        self:SetTerminalPosition(data.terminalPosition)
+        if not reloading then
+            local abilId = self:GetEntityIndex()
+            local unitId = self:GetCaster():GetEntityIndex()
+            local data = VectorTarget:GetCastQueue(unitId, abilId):popFirst()
+            self:SetInitialPosition(data.initialPosition)
+            self:SetTerminalPosition(data.terminalPosition)
+        end
         return _OnAbilityPhaseStart(self)
     end
+
+    --override CastFilterResultLocation
+    local _CastFilterResultLocation = abil.CastFilterResultLocation
+    function abil:CastFilterResultLocation(location)
+        return VectorTarget:_CastFilterHelper(self, _CastFilterResultLocation, location)
+    end
+
+    --override GetCustomCastErrorLocation
+    local _GetCustomCastErrorLocation = abil.GetCustomCastErrorLocation
+    function abil:GetCustomCastErrorLocation(location) 
+        local msg = _GetCustomCastErrorLocation(self, location)
+        if (not msg or msg == "" or msg == "CUSTOM ERROR") and self.GetCustomCastErrorVector then
+            msg = self:GetCustomCastErrorVector(self._vectorTargetKeys.castFilterData)
+        end
+        return msg
+    end
 end
+
+function VectorTarget:OrderFilter(data)
+    local playerId = data.issuer_player_id_const
+    local abilId = data.entindex_ability
+    local inProgress = self.inProgressOrders[playerId] -- retrieve any in-progress orders for this player
+    local seqNum = data.sequence_number_const
+    local units = { }
+    local nUnits = 0
+    for i, unitId in pairs(data.units) do
+        if seqNum > self:GetMaxSequenceNumber(unitId) then
+            units[i] = unitId
+            nUnits = nUnits + 1
+        end
+    end
+    if nUnits == 0 then
+        return true
+    end
+    --print("seq num: ", seqNum, "order type: ", data.order_type, "queue: ", data.queue)
+    if abilId ~= nil and abilId > 0 then
+        local abil = EntIndexToHScript(abilId)
+        if abil.isVectorTarget and data.order_type == DOTA_UNIT_ORDER_CAST_POSITION then
+            local unitId = units["0"] or units[0]
+            local targetPos = {x = data.position_x, y = data.position_y, z = data.position_z}
+            if inProgress == nil or inProgress.abilId ~= abilId or inProgress.unitId ~= unitId then -- if no in-progress order, this order selects the initial point of a vector cast
+                --print("inProgress", playerId, abilId, unitId)
+                local orderData = {
+                    initialPosition = targetPos,
+                    minDistance = abil:GetMinDistance(),
+                    maxDistance = abil:GetMaxDistance(),
+                    cpMap = abil._vectorTargetKeys.cpMap,
+                    particleName = abil._vectorTargetKeys.particleName,
+                    seqNum = seqNum,
+                    abilId = abilId,
+                    time = Time(),
+                    orderType = data.order_type,
+                    unitId = unitId,
+                    shiftPressed = data.queue,
+                }
+                self.inProgressOrders[playerId] = orderData --set this order as our player's current in-progress order
+                CustomGameEventManager:Send_ServerToPlayer(PlayerResource:GetPlayer(playerId), "vector_target_order_start", orderData)
+                return false
+            else --in-progress order (initial point has been selected)
+                if inProgress.shiftPressed == 1 then --make this order shift-queued if previous order was
+                    data.queue = 1
+                elseif data.queue == 0 then -- if not shift queued, clear cast queue before we add to it
+                    self:ClearQueuesForUnits(units)
+                end
+                
+                inProgress.terminalPosition = targetPos
+                
+                --temporarily set initial/terminal on the ability so we can all (a possibly overriden) abil:GetPointOfCast
+                local p = VectorTarget._WithPoints(abil, inProgress.initialPosition, inProgress.terminalPosition, function() 
+                        return abil:GetPointOfCast()
+                end)
+                data.position_x = p.x
+                data.position_y = p.y
+                data.position_z = p.z
+                self:GetCastQueue(unitId, abilId):push(inProgress, seqNum)
+                self.inProgressOrders[playerId] = nil
+                -- something in the inProgress table causes the event system to crash the game, so we need to make a new table and pick out
+                -- only the important values.
+                CustomGameEventManager:Send_ServerToPlayer(PlayerResource:GetPlayer(playerId), "vector_target_order_finish", {
+                    --terminalPosition = inProgress.initialPosition,
+                    --initialPosition = inProgress.terminalPosition,
+                    unitId = inProgress.unitId,
+                    abilId = inProgress.abilId,
+                    seqNum = inProgress.seqNum,
+                })
+                return true -- exit early
+            end
+        end
+    end
+    if data.queue == 0 then -- if shift was not pressed, clear our cast queues for the unit(s) in question
+        self:ClearQueuesForUnits(units)
+    end
+    if inProgress ~= nil then
+        self.inProgressOrders[playerId] = nil
+        CustomGameEventManager:Send_ServerToPlayer(PlayerResource:GetPlayer(playerId), "vector_target_order_cancel", inProgress)
+    end
+    return true
+end
+
+--[[ Library Event Handlers ]]
+
+function VectorTarget:_OnVectorTargetOrderCancel(eventSource, keys)
+    --print("order cancel event")
+    local inProgress = self.inProgressOrders[eventSource] 
+    if inProgress ~= nil and inProgress.seqNum == keys.seqNum then
+        --print("canceling")
+        self.inProgressOrders[eventSource - 1] = nil
+    end
+end
+
+function VectorTarget:_OnVectorTargetQueueFull(eventSource, keys)
+    --print("queue full")
+    --util.printTable(keys)
+end
+
+function VectorTarget:_OnNpcSpawned(ctx, keys)
+    self:WrapUnit(EntIndexToHScript(keys.entindex))
+end
+
+function VectorTarget:_OnScriptReload()
+    VectorTarget:ReloadAllKV()
+    --reload existing abilities
+    for _, abil in pairs(Entities:FindAllByClassname("ability_lua")) do
+        local keys = self.abilityKeys[abil:GetAbilityName()]
+        if keys then
+            self:WrapAbility(abil, keys, true)
+        elseif abil.isVectorTarget then -- TODO: handle case where ability is made non-vector
+
+        end
+    end
+end
+
+--[[ Internal Helper/Utility Functions ]]
 
 function VectorTarget._CalcPointOfCast(mode, initial, terminal)
     if mode == "initial" then
@@ -368,7 +471,7 @@ function VectorTarget._CalcMidPoint(a, b)
     return Vector((a.x + b.x)/2, (a.y + b.y)/2, (a.z + b.z)/2)
 end
 
---helper to temporarily set targeting information
+-- helper to temporarily set targeting information
 function VectorTarget._WithPoints(abil, initial, terminal, func, ...)
     local initialOld, terminalOld = abil:GetInitialPosition(), abil:GetTerminalPosition()
     abil:SetInitialPosition(initial)
@@ -383,7 +486,39 @@ function VectorTarget._WithPoints(abil, initial, terminal, func, ...)
     end
 end
 
--- a sparse queue implementation
+function VectorTarget:_CastFilterHelper(abil, parentMethod, ...)
+    local abilId = abil:GetEntityIndex()
+    local unitId = abil:GetCaster():GetEntityIndex()
+    --[[
+    --check in-progress orders
+    local orders = self:GetInProgressForAbility(abilId)
+    local inProgress
+    for playerId, order in pairs(orders) do -- find oldest in-progress order for this unit with an unhandled cast filter
+        if not order.castFilterHandled and order.unitId == unitId and (inProgress == nil or inProgress.time >= order.time) then
+            inProgress = order
+        end
+    end
+    local data, method
+    if inProgress ~= nil then --handle in-progress order
+        data = inProgress
+        method = abil.CastFilterResultVectorStart or abil.CastFilterResultVector
+        data.castFilterHandled = true
+    else -- handle completed order
+    --]]
+    local data = VectorTarget:GetCastQueue(unitId, abilId):peekLast()
+    local method = abil.CastFilterResultVectorFinish or abil.CastFilterResultVector
+    abil._vectorTargetKeys.castFilterData = data
+    --setup ability state
+    abil:SetInitialPosition(data.initialPosition)
+    abil:SetTerminalPosition(data.terminalPosition)
+    local status = parentMethod(abil, ...) -- call parent method (CastFilterResultLocation, CastFilterResultTarget, etc)
+    if status == UF_SUCCESS and method then -- if successful, call vector target cast filter
+        status = method(abil, data)
+    end
+    return status
+end
+
+--[[ A sparse queue implementation ]]
 function queue.constructor(q)
     q.first = 0
     q.last = -1
