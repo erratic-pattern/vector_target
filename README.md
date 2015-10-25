@@ -47,17 +47,17 @@ A library for vector targeted abilities in Dota 2 custom games.
 
 #KV Options
 ##KV File Loading
-This library reads from `npc_abilities_custom.txt` by default to get ability-specific vector targeting options. 
-If you'd like options from another KV file, you can use the `kv` option when calling `VectorTarget:Init`
+This library reads from `npc_abilities_custom.txt` and `npc_items_custom.txt` by default to get ability-specific vector targeting options. 
+If you'd like options from other KV files, you can use the `kvList` option when calling `VectorTarget:Init`
 
   ```lua
-  VectorTarget:Init({ kv = "my_custom_kv_file.txt" })
+  VectorTarget:Init({ kvList = { "my_custom_kv_file.txt", "my_custom_kv_file2.txt", myTable })
   ```
 
-You can also pass a table as the `kv` option, which will use that table as though it were the table returned by the Dota 2
-`LoadKeyValues` API function.
+The argument is an array of "KV sources", which can be either file names or Lua tables. If you use a table as a KV source, it should
+have the same format as a KV table returned by the Valve function `LoadKeyValues`.
 
-Finally, if you want to disable KV loading, you can explicitly set `kv` to false.
+Finally, if you want to disable KV loading, you can explicitly set `kvList` to false
 
 ##KV Options Format
 For default vector targeting behavior, all you need to do is add a `VectorTarget` key to the ability's definition block.
@@ -149,16 +149,17 @@ set the `noOrderFilter` option when calling `VectorTarget:Init`, and then call `
  more readily interoptable. )
  
 ##Adding Vector Targeting Behavior to Abilities Dynamically
-By default, the library will "vectorify" all abilities on NPCs during the `npc_spawned` event. If, however, you want to dynamically create abilities, you will need to make calls to `VectorTarget:WrapAbility`
+The library will "vectorify" all abilities immediately before the first time they're casted. If for some reason you want to do this before that happens,
+ you will need to manually call `VectorTarget:WrapAbility`
+
 ```lua
-VectorTarget:WrapAbility(myAbility, {
-  ParticleName = "particles/my_custom_particle.vpcf"
-})
+VectorTarget:WrapAbility(myAbility)
 ```
-The second argument is a table with values corresponding to the KV options described earlier.
+
+There's also a shorthand `VectorTarget:WrapUnit` to do this for all abilities on a unit.
  
 #Planned Improvements and to-do
-* Support an optional fast click-drag-release casting behavior.
+* Better options for fast click-drag mode.
 * Support various combinations of unit-targeting and point-targeting, for example HoN's "Vector Entity" target type.
 * Add more built-in particles for area/cone abilities, and wide abilities.
 * Add more variables for the `ControlPoints` KV blocks.
