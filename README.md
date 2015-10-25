@@ -1,6 +1,6 @@
 A library for vector targeted abilities in Dota 2 custom games.
 
-![](http://giant.gfycat.com/DisgustingKindBronco.gif)
+![](http://gfycat.com/DisgustingKindBronco)
 
 #Features
 * Fullly configurable through KV
