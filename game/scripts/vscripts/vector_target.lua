@@ -215,8 +215,9 @@ end
 function VectorTarget:WrapAbility(abil, keys, reloading)
     local VectorTarget = self
     local abiName = abil:GetAbilityName()
-    if "ability_lua" ~= abil:GetClassname() then
-        print("[VECTORTARGET] Warning: " .. abiName .. " is not a Lua ability and cannot be vector targeted.")
+    local cName = abil:GetClassname()
+    if "ability_lua" ~= cName and "item_lua" ~= cName then
+        print("[VECTORTARGET] Warning: " .. abiName .. " is not a Lua ability/item and cannot be vector targeted.")
         return
     end
     if not reloading and abil.isVectorTarget then
