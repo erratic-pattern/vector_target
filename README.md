@@ -51,16 +51,14 @@ This library reads from `npc_abilities_custom.txt` and `npc_items_custom.txt` by
 If you'd like options from other KV files, you can use the `kvList` option when calling `VectorTarget:Init`
 
   ```lua
-  VectorTarget:Init({ kvList = { "my_custom_kv_file.txt", "my_custom_kv_file2.txt", myTable })
+  VectorTarget:Init( { kvList = { "my_custom_kv_file.txt", "my_custom_kv_file2.txt", myTable } } )
   ```
 
-The argument is an array of "KV sources", which can be either file names or Lua tables. If you use a table as a KV source, it should
-have the same format as a KV table returned by the Valve function `LoadKeyValues`.
-
-Finally, if you want to disable KV loading, you can explicitly set `kvList` to false
+`kvList` is an array of "KV sources", which can be either file names or Lua tables. If you use a table as a KV source, it should
+have the same format as a KV table returned by the Valve function `LoadKeyValues`. If you want to disable automatic KV loading, you can explicitly set `kvList` to false
 
 ##KV Options Format
-For default vector targeting behavior, all you need to do is add a `VectorTarget` key to the ability's definition block.
+For default vector targeting behavior, all you need to do is add a non-zero `VectorTarget` key to the ability's definition block.
   ```javascript
       "my_ability"
       {
@@ -122,7 +120,7 @@ Any ability that's been modified by the library will have a key named `isVectorT
 
 * `:GetMinDistance()` - The MinDistance KV field. Also unsued currently.
 
-#Real World Examples
+#Examples
 * A Macropyre-like ability with vector targeting:
     * [Ability KV](https://github.com/kallisti-dev/WarOfExalts/blob/4aaf3c5db5ab4febd3e9ef1bd05c6529c4ca1a8a/game/dota_addons/warofexalts/scripts/npc/abilities/flameshaper_lava_wake.txt)
     * [Ability Lua](https://github.com/kallisti-dev/WarOfExalts/blob/6f62f8c5a21f0c837e9ac43bd34479230c10a76a/game/dota_addons/warofexalts/scripts/vscripts/heroes/flameshaper/flameshaper_lava_wake.lua)
