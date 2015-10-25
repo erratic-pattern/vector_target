@@ -29,7 +29,7 @@ else
     VectorTarget:_OnScriptReload()
 end
 
-VectorTarget.VERSION = {0,1,5};
+VectorTarget.VERSION = {0,2,0};
 
 local queue = class({}) -- sparse queue implementation (see bottom of file for code)
 

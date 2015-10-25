@@ -9,7 +9,7 @@
     
 */
 'use strict';
-var VECTOR_TARGET_VERSION = [0, 1, 5]; //version data
+var VECTOR_TARGET_VERSION = [0, 2, 0]; //version data
 
 var VectorTarget = {} // public API
 
@@ -127,6 +127,10 @@ VectorTarget.IsFastClickDragMode = function() {
         //$.Msg("finalizer called");
         hideRangeFinder();
         prevEventKeys = eventKeys;
+        if(Abilities.GetLocalPlayerActiveAbility() == eventKeys.abilId) {
+            //$.Msg("re-execute");
+            Abilities.ExecuteAbility(eventKeys.abilId, eventKeys.unitId, false);
+        }
         eventKeys = { };
     }
     
@@ -165,7 +169,7 @@ VectorTarget.IsFastClickDragMode = function() {
         }
     });
     
-    VectorTarget.SetFastClickDragMode(true);
+    VectorTarget.SetFastClickDragMode(false);
     
 })();
 
