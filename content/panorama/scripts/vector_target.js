@@ -27,12 +27,12 @@ VectorTarget.IsFastClickDragMode = function() {
 (function() {
     //constants
     var UPDATE_RANGE_FINDER_RATE = 1/30; // rate in seconds to update range finder control points
-    var CANCEL_ORDER_DELAY = 0.01 // number of seconds to wait before the UI senda the cancel order event (prevents some race conditons between client/server handling)
+    var INACTIVE_CANCEL_DELAY = 0.2 // number of seconds to wait before the UI senda the cancel order event (prevents some race conditons between client/server handling)
     //state variables
     var rangeFinderParticle;
     var eventKeys = { };
     var prevEventKeys = { };
-    var updatingRangeFinder = false;
+    var inactiveTimer = Game.GetGameTime(); // amount of time that no ability has been active 
     
     GameEvents.Subscribe("vector_target_order_start", function(keys) {
         //$.Msg("vector_target_order_start event");
@@ -49,8 +49,7 @@ VectorTarget.IsFastClickDragMode = function() {
         if(!rangeFinderParticle && eventKeys.particleName) {
             rangeFinderParticle = Particles.CreateParticle(eventKeys.particleName, ParticleAttachment_t.PATTACH_ABSORIGIN, eventKeys.unitId);
             mapToControlPoints({"initial": eventKeys.initialPosition});
-            if (!updatingRangeFinder)
-                updateRangeFinder();
+            updateRangeFinder();
         };
     }
     
@@ -78,7 +77,16 @@ VectorTarget.IsFastClickDragMode = function() {
             }
         }
         if(activeAbil === -1) {
-            cancelVectorTargetOrder()
+            var now = Game.GetGametime();
+            if (inactiveTimer == null) {
+                inactiveTimer = now;
+            }
+            else if (now - inactiveTimer >= INACTIVE_CANCEL_DELAY ) {
+                cancelVectorTargetOrder()
+            }
+        }
+        else {
+            inactiveTimer = null;
         }
         $.Schedule(UPDATE_RANGE_FINDER_RATE, updateRangeFinder);
     }

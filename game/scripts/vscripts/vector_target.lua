@@ -72,7 +72,7 @@ function VectorTarget:InitEventListeners()
     --ListenToGameEvent("npc_spawned", function(...) self:_OnNpcSpawned(...) end, {})
     CustomGameEventManager:RegisterListener("vector_target_order_cancel", function(...) self:_OnVectorTargetOrderCancel(...) end)
     CustomGameEventManager:RegisterListener("vector_target_queue_full", function(...) self:_OnVectorTargetQueueFull(...) end)
-    ListenToGameEvent('player_connect_full', Dynamic_Wrap(VectorTarget, "_OnPlayerConnectFull"), self)
+    --ListenToGameEvent('player_connect_full', Dynamic_Wrap(VectorTarget, "_OnPlayerConnectFull"), self)
     self.initializedEventListeners = true
 end
 
@@ -126,9 +126,7 @@ function VectorTarget:ReloadAllKV(deletePrevious)
     if deletePrevious ~= false then
         self.abilityKeys = { }
     end
-    for _, source in ipairs(self.kvSources) do
-        self:LoadKV(source, true)
-    end
+    self:LoadKV(self.kvSources, true)
 end
 
 function VectorTarget:GetInProgressForPlayer(playerId)
@@ -434,9 +432,8 @@ end
 --[[ Library Event Handlers ]]
 
 function VectorTarget:_OnVectorTargetOrderCancel(eventSource, keys)
-    util.printTable(self.userIds)
-    local pId = self.userIds[eventSource]
-    local inProgress = self.inProgressOrders[pId] 
+    local pId = eventSource - 1
+    local inProgress = self.inProgressOrders[pId]
     if inProgress ~= nil and inProgress.seqNum == keys.seqNum then
         --print("canceling")
         self.inProgressOrders[pId] = nil
@@ -448,10 +445,12 @@ function VectorTarget:_OnVectorTargetQueueFull(eventSource, keys)
     --util.printTable(keys)
 end
 
+--[[
 function VectorTarget:_OnPlayerConnectFull(keys)
     local p = EntIndexToHScript(keys.index + 1)
     self.userIds[keys.index] = p:GetPlayerID()
 end
+]]
 
 --[[
 function VectorTarget:_OnNpcSpawned(ctx, keys)
