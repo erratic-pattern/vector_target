@@ -85,7 +85,7 @@ VectorTarget.IsFastClickDragMode = function() {
     
     function cancelVectorTargetOrder() {
         if(eventKeys.abilId === undefined) return;
-        $.Msg("Canceling ", eventKeys)
+        //$.Msg("Canceling ", eventKeys)
         GameEvents.SendCustomGameEventToServer("vector_target_order_cancel", eventKeys);
         finalize();
     }
@@ -126,10 +126,12 @@ VectorTarget.IsFastClickDragMode = function() {
         //$.Msg("finalizer called");
         hideRangeFinder();
         prevEventKeys = eventKeys;
+        /*
         if(Abilities.GetLocalPlayerActiveAbility() == eventKeys.abilId) {
-            //$.Msg("re-execute");
-            //Abilities.ExecuteAbility(eventKeys.abilId, eventKeys.unitId, false);
+            $.Msg("re-execute");
+            Abilities.ExecuteAbility(eventKeys.abilId, eventKeys.unitId, false);
         }
+        */
         eventKeys = { };
     }
     
