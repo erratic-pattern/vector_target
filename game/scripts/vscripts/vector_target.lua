@@ -31,7 +31,7 @@ else
     reloading = true
 end
 
-VectorTarget.VERSION = {0,2,1};
+VectorTarget.VERSION = {0,2,2};
 
 local queue = class({}) -- sparse queue implementation (see bottom of file for code)
 

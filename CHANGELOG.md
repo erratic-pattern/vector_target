@@ -1,5 +1,8 @@
 #vector_target.lua
 
+##0.2.2
+* more fixes to order cancellation (client vs server timing fixes)
+
 ##0.2.1
 * fixed issues with canceling in-progress orders
 

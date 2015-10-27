@@ -9,7 +9,7 @@
     
 */
 'use strict';
-var VECTOR_TARGET_VERSION = [0, 2, 1]; //version data
+var VECTOR_TARGET_VERSION = [0, 2, 2]; //version data
 
 var VectorTarget = {} // public API
 
