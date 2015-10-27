@@ -27,7 +27,7 @@ VectorTarget.IsFastClickDragMode = function() {
 (function() {
     //constants
     var UPDATE_RANGE_FINDER_RATE = 1/30; // rate in seconds to update range finder control points
-    var INACTIVE_CANCEL_DELAY = 0.2 // number of seconds to wait before the UI senda the cancel order event (prevents some race conditons between client/server handling)
+    var INACTIVE_CANCEL_DELAY = 0.1 // number of seconds to wait before the UI senda the cancel order event (prevents some race conditons between client/server handling)
     //state variables
     var rangeFinderParticle;
     var eventKeys = { };
@@ -77,11 +77,9 @@ VectorTarget.IsFastClickDragMode = function() {
             }
         }
         if(activeAbil === -1) {
-            var now = Game.GetGametime();
-            if (inactiveTimer == null) {
-                inactiveTimer = now;
-            }
-            else if (now - inactiveTimer >= INACTIVE_CANCEL_DELAY ) {
+            var now = Game.GetGameTime();
+            inactiveTimer = inactiveTimer || now;
+            if (now - inactiveTimer >= INACTIVE_CANCEL_DELAY ) {
                 cancelVectorTargetOrder()
             }
         }
