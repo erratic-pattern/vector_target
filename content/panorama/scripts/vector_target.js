@@ -9,7 +9,7 @@
     
 */
 'use strict';
-var VECTOR_TARGET_VERSION = [0, 2, 0]; //version data
+var VECTOR_TARGET_VERSION = [0, 2, 1]; //version data
 
 var VectorTarget = {} // public API
 
@@ -77,16 +77,15 @@ VectorTarget.IsFastClickDragMode = function() {
                     mapToControlPoints({"terminal" : pos}, true);
             }
         }
-        /*if(activeAbil === -1) {
-            updatingRangeFinder = false;
+        if(activeAbil === -1) {
             cancelVectorTargetOrder()
-        }*/
+        }
         $.Schedule(UPDATE_RANGE_FINDER_RATE, updateRangeFinder);
     }
     
     function cancelVectorTargetOrder() {
         if(eventKeys.abilId === undefined) return;
-        //$.Msg("Canceling ", eventKeys)
+        $.Msg("Canceling ", eventKeys)
         GameEvents.SendCustomGameEventToServer("vector_target_order_cancel", eventKeys);
         finalize();
     }
@@ -129,7 +128,7 @@ VectorTarget.IsFastClickDragMode = function() {
         prevEventKeys = eventKeys;
         if(Abilities.GetLocalPlayerActiveAbility() == eventKeys.abilId) {
             //$.Msg("re-execute");
-            Abilities.ExecuteAbility(eventKeys.abilId, eventKeys.unitId, false);
+            //Abilities.ExecuteAbility(eventKeys.abilId, eventKeys.unitId, false);
         }
         eventKeys = { };
     }

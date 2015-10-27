@@ -17,19 +17,21 @@ VECTOR_TARGET_DEBUG_NONE = 0     -- no logging
 VECTOR_TARGET_DEBUG_DEFAULT = 1  -- default logging of important events
 VECTOR_TARGET_DEBUG_ALL = 2      -- detailed debug info
 ]]
+local reloading = false 
 if VectorTarget == nil then
     VectorTarget = {
         inProgressOrders = { }, -- a table of vector orders currently in-progress, indexed by player ID
         abilityKeys = { }, -- data loaded from KV files, indexed by ability name
         kvSources = { }, -- a list of filenames / tables that were passed to LoadKV, used during reloading
         castQueues = { }, -- table of cast queues indexed by castQueues[unit ID][ability ID]
+        userIds = { } -- user id -> player id
         --debugMode = VECTOR_TARGET_DEBUG_ALL, -- debug output mode
     }
 else
-    VectorTarget:_OnScriptReload()
+    reloading = true
 end
 
-VectorTarget.VERSION = {0,2,0};
+VectorTarget.VERSION = {0,2,1};
 
 local queue = class({}) -- sparse queue implementation (see bottom of file for code)
 
@@ -70,6 +72,7 @@ function VectorTarget:InitEventListeners()
     --ListenToGameEvent("npc_spawned", function(...) self:_OnNpcSpawned(...) end, {})
     CustomGameEventManager:RegisterListener("vector_target_order_cancel", function(...) self:_OnVectorTargetOrderCancel(...) end)
     CustomGameEventManager:RegisterListener("vector_target_queue_full", function(...) self:_OnVectorTargetQueueFull(...) end)
+    ListenToGameEvent('player_connect_full', Dynamic_Wrap(VectorTarget, "_OnPlayerConnectFull"), self)
     self.initializedEventListeners = true
 end
 
@@ -84,7 +87,7 @@ end
 
 -- Loads vector target KV values from a file, or a table with the same format as one returned by LoadKeyValues()
 function VectorTarget:LoadKV(kvList, forgetSource)
-    for _, kv in ipairs(kvList) do
+    for _, kv in ipairs(kvList or { }) do
         local kvFile
         if type(kv) == "string" then
             kvFile = kv
@@ -123,7 +126,7 @@ function VectorTarget:ReloadAllKV(deletePrevious)
     if deletePrevious ~= false then
         self.abilityKeys = { }
     end
-    for _, source in ipairs(copySources) do
+    for _, source in ipairs(self.kvSources) do
         self:LoadKV(source, true)
     end
 end
@@ -431,17 +434,23 @@ end
 --[[ Library Event Handlers ]]
 
 function VectorTarget:_OnVectorTargetOrderCancel(eventSource, keys)
-    --print("order cancel event")
-    local inProgress = self.inProgressOrders[eventSource] 
+    util.printTable(self.userIds)
+    local pId = self.userIds[eventSource]
+    local inProgress = self.inProgressOrders[pId] 
     if inProgress ~= nil and inProgress.seqNum == keys.seqNum then
         --print("canceling")
-        self.inProgressOrders[eventSource - 1] = nil
+        self.inProgressOrders[pId] = nil
     end
 end
 
 function VectorTarget:_OnVectorTargetQueueFull(eventSource, keys)
     --print("queue full")
     --util.printTable(keys)
+end
+
+function VectorTarget:_OnPlayerConnectFull(keys)
+    local p = EntIndexToHScript(keys.index + 1)
+    self.userIds[keys.index] = p:GetPlayerID()
 end
 
 --[[
@@ -607,4 +616,8 @@ end
 
 function queue.length(q)
     return q.len
+end
+
+if reloading then
+    VectorTarget:_OnScriptReload()
 end
