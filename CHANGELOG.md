@@ -1,4 +1,6 @@
 #vector_target.lua
+##0.2.3
+* fixed a bug causing the range finder particle timer to duplicate
 
 ##0.2.2
 * more fixes to order cancellation (client vs server timing fixes)

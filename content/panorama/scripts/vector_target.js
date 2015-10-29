@@ -9,7 +9,7 @@
     
 */
 'use strict';
-var VECTOR_TARGET_VERSION = [0, 2, 2]; //version data
+var VECTOR_TARGET_VERSION = [0, 2, 3]; //version data
 
 var VectorTarget = {} // public API
 
@@ -50,7 +50,6 @@ VectorTarget.IsFastClickDragMode = function() {
             rangeFinderParticle = Particles.CreateParticle(eventKeys.particleName, ParticleAttachment_t.PATTACH_ABSORIGIN, eventKeys.unitId);
             mapToControlPoints({"initial": eventKeys.initialPosition});
             mapToControlPoints({"terminal": [eventKeys.initialPosition[0] + 1, eventKeys.initialPosition[1], eventKeys.initialPosition[2]]});
-            updateRangeFinder();
         };
     }
     
@@ -84,7 +83,7 @@ VectorTarget.IsFastClickDragMode = function() {
                 }
             }
         }
-        if(activeAbil === -1) {
+        if(eventKeys.abilId != null && activeAbil === -1) {
             var now = Game.GetGameTime();
             inactiveTimer = inactiveTimer || now;
             if (now - inactiveTimer >= INACTIVE_CANCEL_DELAY ) {
@@ -96,6 +95,7 @@ VectorTarget.IsFastClickDragMode = function() {
         }
         $.Schedule(UPDATE_RANGE_FINDER_RATE, updateRangeFinder);
     }
+    updateRangeFinder();
     
     function cancelVectorTargetOrder() {
         if(eventKeys.abilId === undefined) return;
