@@ -50,7 +50,7 @@ VectorTarget.IsFastClickDragMode = function() {
             rangeFinderParticle = Particles.CreateParticle(eventKeys.particleName, ParticleAttachment_t.PATTACH_ABSORIGIN, eventKeys.unitId);
             mapToControlPoints({
                 "initial": eventKeys.initialPosition,
-                "terminal": [eventKeys.initialPosition[0], eventKeys.initialPosition[1], eventKeys.initialPosition[2]+1]
+                "terminal": [eventKeys.initialPosition[0] + 1, eventKeys.initialPosition[1], eventKeys.initialPosition[2]]
             });
         };
     }
@@ -134,7 +134,7 @@ VectorTarget.IsFastClickDragMode = function() {
                 }
             }
             if(shouldSet) {
-                $.Msg(cp, vector)
+                //$.Msg(cp, vector)
                 Particles.SetParticleControl(rangeFinderParticle, parseInt(cp), vector);
             }
         }
@@ -199,7 +199,8 @@ VectorTarget.IsFastClickDragMode = function() {
     /* vector math */
 
     function vMidPoint(a, b) {
-        return zipWith(function(a,b) { (a + b) / 2; }, a, b)[ (a[0] + b[0])/2, (a[1] + b[1])/2, (a[2] + b[2])/2 ];
+        return zipWith(function(a,b) { return (a + b) / 2; }, a, b)
+        //return [ (a[0] + b[0])/2, (a[1] + b[1])/2, (a[2] + b[2])/2 ];
     }
 
     function vLength(v) {
