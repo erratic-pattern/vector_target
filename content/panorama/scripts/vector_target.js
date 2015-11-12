@@ -48,8 +48,10 @@ VectorTarget.IsFastClickDragMode = function() {
     function showRangeFinder() {
         if(!rangeFinderParticle && eventKeys.particleName) {
             rangeFinderParticle = Particles.CreateParticle(eventKeys.particleName, ParticleAttachment_t.PATTACH_ABSORIGIN, eventKeys.unitId);
-            mapToControlPoints({"initial": eventKeys.initialPosition});
-            mapToControlPoints({"terminal": [eventKeys.initialPosition[0] + 1, eventKeys.initialPosition[1], eventKeys.initialPosition[2]]});
+            mapToControlPoints({
+                "initial": eventKeys.initialPosition,
+                "terminal": [eventKeys.initialPosition[0], eventKeys.initialPosition[1], eventKeys.initialPosition[2]+1]
+            });
         };
     }
     
@@ -74,12 +76,13 @@ VectorTarget.IsFastClickDragMode = function() {
                 var pos = GameUI.GetScreenWorldPosition(GameUI.GetCursorPosition());
                 if(pos != null) {
                     var start = eventKeys.initialPosition;
-
-                    if (pos[0] == start[0] && pos[1] == start[1]) {
-                        pos[0] += 1;
+                    var keys = { }
+                    if (pos[0] != start[0] || pos[1] != start[1] || pos[2] != start[2]) {
+                        keys.terminal = pos;
+                        keys.midpoint = vMidPoint(start, pos);
+                        keys.maxdistancedelta = 
+                        mapToControlPoints(keys, true);
                     }
-
-                    mapToControlPoints({"terminal" : pos}, true);
                 }
             }
         }
@@ -131,6 +134,7 @@ VectorTarget.IsFastClickDragMode = function() {
                 }
             }
             if(shouldSet) {
+                $.Msg(cp, vector)
                 Particles.SetParticleControl(rangeFinderParticle, parseInt(cp), vector);
             }
         }
@@ -184,7 +188,43 @@ VectorTarget.IsFastClickDragMode = function() {
         }
     });
     
-    VectorTarget.SetFastClickDragMode(false);
+    //VectorTarget.SetFastClickDragMode(true);
+
+    /* functional programming helpers */
+
+    function zipWith(f, a, b) {
+        return a.map(function(x, i) { return f(x, b[i]); });
+    }
+
+    /* vector math */
+
+    function vMidPoint(a, b) {
+        return zipWith(function(a,b) { (a + b) / 2; }, a, b)[ (a[0] + b[0])/2, (a[1] + b[1])/2, (a[2] + b[2])/2 ];
+    }
+
+    function vLength(v) {
+        return Math.sqrt(v.reduce(function(a,b) { return a + Math.pow(b, 2); }, 0));
+        //return Math.sqrt(Math.pow(v[0], 2), Math.pow(v[1], 2), Math.pow(v[2], 2));
+    }
+
+    function vNormalize(v) {
+        var d = vLength(v);
+        return vScalarDiv(v, d);
+        //return [v[0] / d, v[1] / d, v[2] / d];
+    }
+
+    function vScalarMul(v, s) {
+        return v.map(function(x) { return x * s; });
+        //return [v[0] * s, v[1] * s, v[2] * s];
+    }
+
+    function vScalarDiv(v, s) {
+        return v.map(function(x) { return x / s; });
+    }
+
+    function vDiff(a, b) {
+        return zipWith(function(a,b){return a-b;}, a, b);
+    }
     
 })();
 
