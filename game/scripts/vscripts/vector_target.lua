@@ -297,13 +297,19 @@ function VectorTarget:WrapAbility(abil, reloading)
     
     if not abil.GetMinDistance then
         function abil:GetMinDistance()
-            return self._vectorTargetKeys.minDistance
+            local min = self._vectorTargetKeys.minDistance
+            if min ~= nil then
+                return VectorTarget._GetLevelScalableKey(self, min)
+            end
         end
     end
     
     if not abil.GetMaxDistance then
         function abil:GetMaxDistance()
-            return self._vectorTargetKeys.maxDistance
+            local max = self._vectorTargetKeys.maxDistance
+            if max ~= nil then
+                return VectorTarget._GetLevelScalableKey(self, max)
+            end
         end
     end
 
@@ -392,11 +398,13 @@ function VectorTarget:OrderFilter(data)
                 local targetPos = {x = data.position_x, y = data.position_y, z = data.position_z}
                 if inProgress == nil or inProgress.abilId ~= abilId or inProgress.unitId ~= unitId then -- if no in-progress order, this order selects the initial point of a vector cast
                     --print("inProgress", playerId, abilId, unitId)
+                    local cpMap = abil._vectorTargetKeys.cpMap
                     local orderData = {
                         initialPosition = targetPos,
                         minDistance = abil:GetMinDistance(),
                         maxDistance = abil:GetMaxDistance(),
-                        cpMap = abil._vectorTargetKeys.cpMap,
+                        cpMap = cpMap,
+                        cpSpecials = VectorTarget._GetAbilitySpecials(abil, cpMap),
                         particleName = abil._vectorTargetKeys.particleName,
                         seqNum = seqNum,
                         abilId = abilId,
@@ -491,6 +499,41 @@ end
 
 --[[ Internal Helper/Utility Functions ]]
 
+function VectorTarget._GetAbilitySpecials(abil, t, lvl)
+    lvl = lvl or abil:GetLevel()
+    local out = { }
+    for _,str in pairs(t) do
+        for _, field in ipairs(VectorTarget._StringSplit(str)) do
+            if VectorTarget:_IsSpecialField(field) then
+                local name = VectorTarget:_ParseSpecialName(field)
+                if out[name] == nil then
+                    out[name] = abil:GetLevelSpecialValueFor(name, lvl)
+                end
+            end
+        end
+    end
+    return out
+end
+
+function VectorTarget._GetLevelScalableKey(abil, fieldString, lvl)
+    local lvl = lvl or abil:GetLevel()
+    local fields = VectorTarget._StringSplit(fieldString)
+    local index = math.min(#fields, abil:GetMaxLevel(), lvl)
+    local field = fields[index]
+    if VectorTarget:_IsSpecialField(field) then
+        field = abil:GetLevelSpecialValueFor(VectorTarget:_ParseSpecialName(field), lvl)
+    end
+    return tonumber(field)
+end
+
+function VectorTarget:_IsSpecialField(str)
+    return string.sub(str, 1, 1) == "%"
+end
+
+function VectorTarget:_ParseSpecialName(str)
+    return string.sub(str, 2)
+end
+
 function VectorTarget._CalcPointOfCast(mode, initial, terminal)
     if mode == "initial" then
         return initial
@@ -520,6 +563,14 @@ function VectorTarget._WithPoints(abil, initial, terminal, func, ...)
     else
         error(res)
     end
+end
+
+function VectorTarget._StringSplit(s)
+    local out = {}
+    for word in string.gmatch(s, "%S+") do
+        table.insert(out, word)
+    end
+    return out
 end
 
 function VectorTarget:_CastFilterHelper(abil, parentMethod, ...)
@@ -553,7 +604,6 @@ function VectorTarget:_GetCastErrorHelper(abil, parentMethod, ...)
     end
     return msg
 end
-
 
 --[[ A sparse queue implementation ]]
 function queue.constructor(q)
